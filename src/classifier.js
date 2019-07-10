@@ -26,7 +26,7 @@ const TOPK = 10;
 let knn = null;
 let mobilenet = null;
 
-const labels = [];
+let labels = [];
 
 async function start() {
   if (!await mobilenet) {
@@ -95,18 +95,59 @@ async function infer(imageSource, label = "") {
 }
 
 function getLabelsWithCount() {
-  return _.zip(labels, knn.getClassExampleCount());
+  const counts = knn.getClassExampleCount();
+  return _.map(labels, (label, key) => ({
+    label,
+    count: counts[key]
+  }));
 }
 
+function exportClassifier() {
+  const dataset = knn.getClassifierDataset();
+  var datasetObj = {}
+  Object.keys(dataset).forEach((key) => {
+    let data = dataset[key].dataSync();
+    // use Array.from() so when JSON.stringify() it covert to an array string e.g [0.1,-0.2...] 
+    // instead of object e.g {0:"0.1", 1:"-0.2"...}
+    datasetObj[key] = Array.from(data);
+  });
+
+  const state = {
+    dataset: datasetObj,
+    labels,
+  }
+
+  return state;
+}
+
+function saveClassifierToLocalStorage() {
+  const state = exportClassifier();
+  localStorage.setItem("model", JSON.stringify(state));
+}
+
+function loadClassifierFromLocalStorage() {
+  const state = JSON.parse(localStorage.getItem("model"));
+  importClassifier(state);
+}
 
 function downloadClassifier() {
-  const state = knn.getClassifierDataset();
-  const data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-  const link = document.createElement('a');
-  link.href = "data:' + data + '";
-  link.download = "model.json";
-  link.text = "dowload";
-  document.body.append(link);
+  const state = exportClassifier();
+
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+  var dlAnchorElem = document.createElement('a');
+  dlAnchorElem.setAttribute("href", dataStr);
+  dlAnchorElem.setAttribute("download", "model.json");
+  dlAnchorElem.click();
+}
+
+function importClassifier(state) {
+  labels = state.labels;
+  const tensorObj = state.dataset;
+
+  Object.keys(tensorObj).forEach((key) => {
+    tensorObj[key] = tf.tensor(tensorObj[key], [tensorObj[key].length / 1000, 1000])
+  })
+  knn.setClassifierDataset(tensorObj);
 }
 
 export {
@@ -115,4 +156,7 @@ export {
   infer,
   start,
   getLabelsWithCount,
+  importClassifier,
+  saveClassifierToLocalStorage,
+  loadClassifierFromLocalStorage,
 }
