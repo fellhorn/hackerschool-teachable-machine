@@ -59,7 +59,7 @@
               <b>{{ item.label }}</b>: {{ item.count }}
               </li>
             </ul>
-            <v-btn v-on:click="saveModel" disabled>Save model</v-btn>
+            <v-btn v-on:click="saveModel">Save model</v-btn>
             <v-btn v-on:click="restoreModel">Restore model</v-btn>
             <v-btn v-on:click="downloadModel">Dowload model</v-btn>
             <br>
@@ -111,7 +111,7 @@ export default {
     train: -1,
     trainedLabels: [],
     videoPlaying: false,
-    socket: new WebSocket('ws://localhost:8081')
+    socket: null,
   }),
   created: async function() {
     // Setup webcam
@@ -137,8 +137,6 @@ export default {
     }
   },
   mounted: function() {
-    this.$refs.fridgeImage.onload = this.imageLoaded;
-
     this.$refs.fileUpload.addEventListener('change', this.uploadModel, false);
     this.syncProducts();
   },
@@ -158,6 +156,10 @@ export default {
       window.setTimeout(() => {
         this.timer = requestAnimationFrame(this.handleImage.bind(this));
       });
+      this.socket = new WebSocket('ws://localhost:8765');
+      this.socket.onerror = function (error) {
+        console.log('WebSocket Error ' + error);
+      };
     },
     handleImage: async function() {
       if (this.videoPlaying && this.modelLoaded) {
@@ -174,9 +176,10 @@ export default {
           // const prom4 = classifier.infer(this.$refs.img4, this.train == 4 ? this.label4 : "");
 
           // [this.clsLabel1, this.clsLabel2, this.clsLabel3, this.clsLabel4] = await Promise.all([prom1, prom2, prom3, prom4]);
-
           this.clsLabel1 = await classifier.infer(this.$refs.video_small, this.train == 1 ? this.label1 : "");
-          this.socket.send(this.clsLabel1);
+          if (this.clsLabel1) {
+            this.socket.send(this.clsLabel1);
+          }
           this.trainedLabels = classifier.getLabelsWithCount();
         } catch (e) {
           console.error(e);
