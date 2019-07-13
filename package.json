@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "core-js": "^2.6.5",
+    "dexie": "^2.0.4",
     "lodash": "^4.17.11",
     "material-design-icons-iconfont": "^3.0.3",
     "roboto-fontface": "*",

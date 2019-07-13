@@ -17,9 +17,7 @@ import * as mobilenetModule from '@tensorflow-models/mobilenet';
 import * as tf from '@tensorflow/tfjs';
 import * as knnClassifier from '@tensorflow-models/knn-classifier';
 import * as _ from "lodash";
-
-// Webcam Image size. Must be 227. 
-const IMAGE_SIZE = 227;
+import db from './database';
 
 // K value for KNN
 const TOPK = 10;
@@ -65,7 +63,6 @@ async function infer(imageSource, label = "") {
   
   // Train class if one of the buttons is held down
   if (label) {
-    console.log("training");
     logits = infer();
     const index = getInsertLabelIndex(label);
 
@@ -120,6 +117,23 @@ function exportClassifier() {
   return state;
 }
 
+async function saveClassifierToIndexedDB() {
+  const name = window.prompt("Name deines Speicherpunkts:");
+  const state = exportClassifier();
+  await db.classifiers.put(
+    { name, ...state }
+  );
+}
+
+function listClassifiers() {
+  return db.classifiers.orderBy('name').keys();
+}
+
+async function loadClassifierFromIndexedDB(id) {
+  const state = await db.classifiers.get(id);
+  importClassifier(state);
+}
+
 function saveClassifierToLocalStorage() {
   const state = exportClassifier();
   localStorage.setItem("model", JSON.stringify(state));
@@ -159,4 +173,7 @@ export {
   importClassifier,
   saveClassifierToLocalStorage,
   loadClassifierFromLocalStorage,
+  saveClassifierToIndexedDB,
+  loadClassifierFromIndexedDB,
+  listClassifiers,
 }

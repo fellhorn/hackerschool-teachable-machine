@@ -26,23 +26,31 @@
               <v-combobox hide-no-data :items="labelNames" label="Neues Label" v-model="label1"/><v-btn v-on:mousedown="train = 1" v-on:mouseup="resetTrain" :disabled="label1 == ''">🔬 Train</v-btn>
             </v-card>
           </v-flex>
-        <v-flex xs2 pa-3>
-          <v-card>
-            <v-card-title primary-title><h3 class="headline ml-3">Trainierte labels:</h3></v-card-title>
-            <ul class="text-xs-left">
-              <li v-for="item in sortedLabels" :key="item.label">
-              <b>{{ item.label }}</b>: {{ item.count }}
-              </li>
-            </ul>
-            <v-btn v-on:click="saveModel">Speichere model</v-btn>
-            <v-btn v-on:click="restoreModel">Lade model</v-btn>
-            <v-btn v-on:click="downloadModel">Dowload model</v-btn>
-            <v-btn v-on:click="restoreSocket">Reconnect</v-btn>
-            <br>
-            Upload model:
-            <input type="file" id="files" ref="fileUpload" name="file" />
-          </v-card>
-        </v-flex>
+          <v-flex xs2 pa-3>
+            <v-card>
+              <v-card-title primary-title><h3 class="headline ml-3">Trainierte labels:</h3></v-card-title>
+              <ul class="text-xs-left">
+                <li v-for="item in sortedLabels" :key="item.label">
+                <b>{{ item.label }}</b>: {{ item.count }}
+                </li>
+              </ul>
+              <v-btn v-on:click="saveModel">Speichere model</v-btn>
+              <v-btn v-on:click="restoreModel">Lade model</v-btn>
+              <v-btn v-on:click="downloadModel">Dowload model</v-btn>
+              <v-btn v-on:click="restoreSocket">Reconnect</v-btn>
+              <br>
+              Upload model:
+              <input type="file" id="files" ref="fileUpload" name="file" />
+            </v-card>
+          </v-flex>
+          <v-flex xs2 pa-3>
+            <v-card>
+              <v-card-title primary-title><h3 class="headline ml-3">Meine Klassifikatoren:</h3></v-card-title>
+                <div v-for="name in classifiers" v-bind:key="name">
+                  {{ name }}<v-btn v-on:click="restoreModel(name)">Lade</v-btn>
+                </div>  
+            </v-card>
+          </v-flex>
       </v-layout>
       </div>
     </v-content> 
@@ -78,6 +86,7 @@ export default {
     videoPlaying: false,
     socket: null,
     socketConnected: false,
+    classifiers: [],
   }),
   created: async function() {
     // Setup webcam
@@ -94,6 +103,7 @@ export default {
         this.onVideoLoaded();
     })
 
+    this.classifiers = await classifier.listClassifiers();
     await classifier.start();
     this.modelLoaded = true;
   },
@@ -173,11 +183,12 @@ export default {
       };
       reader.readAsText(file);
     },
-    saveModel: function() {
-      classifier.saveClassifierToLocalStorage();
+    saveModel: async function() {
+      await classifier.saveClassifierToIndexedDB();
+      this.classifiers = await classifier.listClassifiers();
     },
-    restoreModel: function() {
-      classifier.loadClassifierFromLocalStorage();
+    restoreModel: function(id) {
+      classifier.loadClassifierFromIndexedDB(id);
     }
   }
 }
@@ -202,10 +213,9 @@ div.image-train-card {
 div.left {
   text-align: left;
 }
-.good {
-  color: darkgreen;
-}
-.bad {
-  color: darkred;
+video {
+  transform: rotateY(180deg);
+  -webkit-transform:rotateY(180deg); /* Safari and Chrome */
+  -moz-transform:rotateY(180deg); /* Firefox */
 }
 </style>
