@@ -5,6 +5,9 @@
         <v-flex xs2 pa-3 class="torch-btn" >
           Model: {{ modelLoaded ? "✔️" : "❌" }}
         </v-flex>
+        <v-flex xs2 pa-3 class="torch-btn" >
+          Socket: {{ socketConnected ? "✔️" : "❌" }}
+        </v-flex>
       </v-layout>     
     </v-toolbar>
     <v-content class="text-xs-center">
@@ -34,6 +37,7 @@
             <v-btn v-on:click="saveModel">Speichere model</v-btn>
             <v-btn v-on:click="restoreModel">Lade model</v-btn>
             <v-btn v-on:click="downloadModel">Dowload model</v-btn>
+            <v-btn v-on:click="restoreSocket">Reconnect</v-btn>
             <br>
             Upload model:
             <input type="file" id="files" ref="fileUpload" name="file" />
@@ -73,6 +77,7 @@ export default {
     trainedLabels: [],
     videoPlaying: false,
     socket: null,
+    socketConnected: false,
   }),
   created: async function() {
     // Setup webcam
@@ -120,7 +125,9 @@ export default {
     },
     restoreSocket: function() {
       this.socket = new WebSocket(SOCKET_ADRESS);
+      this.socketConnected = true;
       this.socket.onclose = function (error) {
+        this.socketConnected = false;
         console.log('WebSocket Error ' + error);
         window.setTimeout(() => {
           this.restoreSocket();
