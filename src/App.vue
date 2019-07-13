@@ -11,7 +11,6 @@
       <div class="fridgecam">
         <video ref="video" autoplay="" playsinline="" />
         <br>
-
         <v-layout>
           <v-flex xs1 pa-3 />  
           <v-flex xs2 pa-3>
@@ -21,46 +20,19 @@
               </v-card-title>
               <video ref="video_small" autoplay="" playsinline="" />
               <br>
-              <v-combobox hide-no-data :items="labelNames" label="New Class" v-model="label1"/><v-btn v-on:mousedown="train = 1" v-on:mouseup="resetTrain" :disabled="label1 == ''">🔬 Train</v-btn>
-            </v-card>
-          </v-flex>
-          <!-- <v-flex xs2 pa-3>
-            <v-card>
-              <v-card-title primary-title :class="freshState(clsLabel2)"><h3 class="headline ml-3">{{ clsLabel2 | filterLabel }}: {{freshState(clsLabel2)}}</h3>
-              </v-card-title>
-              <img class="image-crop" :src="imageCrop2" ref="img2" />
-              <br>
-              <v-combobox hide-no-data :items="labelNames" label="New Class" v-model="label2"/><v-btn v-on:mousedown="train = 2" v-on:mouseup="resetTrain" :disabled="label2 == ''">🔬 Train</v-btn>
-            </v-card>
-          </v-flex>
-          <v-flex xs2 pa-3>
-            <v-card>
-              <v-card-title primary-title :class="freshState(clsLabel3)"><h3 class="headline ml-3">{{ clsLabel3 | filterLabel }}: {{freshState(clsLabel3)}}</h3>
-              </v-card-title>
-              <img class="image-crop" :src="imageCrop3" ref="img3" />
-              <br>
-              <v-combobox hide-no-data :items="labelNames" label="New Class" v-model="label3"/><v-btn v-on:mousedown="train = 3" v-on:mouseup="resetTrain" :disabled="label3 == ''">🔬 Train</v-btn>
+              <v-combobox hide-no-data :items="labelNames" label="Neues Label" v-model="label1"/><v-btn v-on:mousedown="train = 1" v-on:mouseup="resetTrain" :disabled="label1 == ''">🔬 Train</v-btn>
             </v-card>
           </v-flex>
         <v-flex xs2 pa-3>
           <v-card>
-            <v-card-title primary-title :class="freshState(clsLabel4)"><h3 class="headline ml-3">{{ clsLabel4 | filterLabel }}: {{freshState(clsLabel4)}}</h3>
-            </v-card-title>
-            <img class="image-crop" :src="imageCrop4" ref="img4" />
-            <br>
-              <v-combobox hide-no-data :items="labelNames" label="New Class" v-model="label4"/><v-btn v-on:mousedown="train = 4" v-on:mouseup="resetTrain" :disabled="label4 == ''">🔬 Train</v-btn>
-          </v-card>
-        </v-flex> -->
-        <v-flex xs2 pa-3>
-          <v-card>
-            <v-card-title primary-title><h3 class="headline ml-3">Trained labels:</h3></v-card-title>
+            <v-card-title primary-title><h3 class="headline ml-3">Trainierte labels:</h3></v-card-title>
             <ul class="text-xs-left">
               <li v-for="item in sortedLabels" :key="item.label">
               <b>{{ item.label }}</b>: {{ item.count }}
               </li>
             </ul>
-            <v-btn v-on:click="saveModel">Save model</v-btn>
-            <v-btn v-on:click="restoreModel">Restore model</v-btn>
+            <v-btn v-on:click="saveModel">Speichere model</v-btn>
+            <v-btn v-on:click="restoreModel">Lade model</v-btn>
             <v-btn v-on:click="downloadModel">Dowload model</v-btn>
             <br>
             Upload model:
@@ -75,19 +47,15 @@
 
 <script>
 import * as _ from 'lodash';
-import {getClippedRegion} from './image-clip';
 import * as classifier from './classifier';
 
 // Webcam Image size. Must be 227. 
 const IMAGE_SIZE = 227;
 const UNKNOWN_LABEL = "???";
-const PREDEFINED_LABELS = [
-  ""
-];
-const SPOILED_AFTER = 10 * 1000;
+const SOCKET_ADRESS = 'ws://localhost:8765';
 
 export default {
-  name: 'Fridgecam',
+  name: 'Hackerschool',
   components: {
   },
   data: () => ({
@@ -95,18 +63,11 @@ export default {
     imageHeight: 0,
     timer: null,
     imageClass: '',
-    imageCrop1: null,
-    imageCrop2: null,
-    imageCrop3: null,
-    imageCrop4: null,
     label1: "",
     label2: "",
     label3: "",
     label4: "",
     clsLabel1: UNKNOWN_LABEL,
-    clsLabel2: UNKNOWN_LABEL,
-    clsLabel3: UNKNOWN_LABEL,
-    clsLabel4: UNKNOWN_LABEL,
     modelLoaded: false,
     train: -1,
     trainedLabels: [],
@@ -138,7 +99,6 @@ export default {
   },
   mounted: function() {
     this.$refs.fileUpload.addEventListener('change', this.uploadModel, false);
-    this.syncProducts();
   },
   computed: {
     sortedLabels: function() {
@@ -156,37 +116,39 @@ export default {
       window.setTimeout(() => {
         this.timer = requestAnimationFrame(this.handleImage.bind(this));
       });
-      this.socket = new WebSocket('ws://localhost:8765');
-      this.socket.onerror = function (error) {
+      this.restoreSocket();
+    },
+    restoreSocket: function() {
+      this.socket = new WebSocket(SOCKET_ADRESS);
+      this.socket.onclose = function (error) {
         console.log('WebSocket Error ' + error);
+        window.setTimeout(() => {
+          this.restoreSocket();
+        }, 200);
       };
     },
     handleImage: async function() {
       if (this.videoPlaying && this.modelLoaded) {
         try {
-          // const cropWidth = Math.round(this.imageWidth / 4);
-          // this.imageCrop1 = getClippedRegion(this.$refs.fridgeImage, 0, 0, cropWidth, this.imageHeight).toDataURL("image/png");
-          // this.imageCrop2 = getClippedRegion(this.$refs.fridgeImage, cropWidth, 0, cropWidth, this.imageHeight).toDataURL("image/png");
-          // this.imageCrop3 = getClippedRegion(this.$refs.fridgeImage, 2 * cropWidth, 0, cropWidth, this.imageHeight).toDataURL("image/png");
-          // this.imageCrop4 = getClippedRegion(this.$refs.fridgeImage, 3 * cropWidth, 0, cropWidth, this.imageHeight).toDataURL("image/png");
-  
-          // const prom1 = classifier.infer(this.$refs.img1, this.train == 1 ? this.label1 : "");
-          // const prom2 = classifier.infer(this.$refs.img2, this.train == 2 ? this.label2 : "");
-          // const prom3 = classifier.infer(this.$refs.img3, this.train == 3 ? this.label3 : "");
-          // const prom4 = classifier.infer(this.$refs.img4, this.train == 4 ? this.label4 : "");
-
-          // [this.clsLabel1, this.clsLabel2, this.clsLabel3, this.clsLabel4] = await Promise.all([prom1, prom2, prom3, prom4]);
           this.clsLabel1 = await classifier.infer(this.$refs.video_small, this.train == 1 ? this.label1 : "");
           if (this.clsLabel1) {
-            this.socket.send(this.clsLabel1);
+            this.sendToServer(this.clsLabel1);
           }
           this.trainedLabels = classifier.getLabelsWithCount();
         } catch (e) {
           console.error(e);
         }
       }
-      // this.timer = window.setTimeout(this.handleImage.bind(this), 500);
       this.timer = requestAnimationFrame(this.handleImage.bind(this));
+    },
+    sendToServer: function(label, confidence = 1.0) {
+      this.socket.send(JSON.stringify({
+        zeit: new Date().getTime() / 1000,
+        klassen: [{
+          name: this.clsLabel1,
+          konfidenz: confidence,
+        }],
+      }));
     },
     downloadModel: function() {
       classifier.downloadClassifier();
