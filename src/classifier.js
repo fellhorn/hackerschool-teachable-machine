@@ -71,6 +71,7 @@ async function infer(imageSource, label = "") {
   }
 
   const numClasses = knn.getNumClasses();
+  let res = null;
   if (numClasses > 0) {
     // If classes have been added run predict
     logits = infer();
@@ -80,14 +81,15 @@ async function infer(imageSource, label = "") {
     // hier bekommt ihr ein objekt, das so ausschaut:
     // classIndex: die index nummer des labels
     // label: das label selbst
-    // confidences: ein array wo jede zahl die confidenc der jeweiligen klasse
+    // confidences: ein array wo jede zahl die confidence der jeweiligen klasse
     // angibt
-    const res = await knn.predictClass(logits, TOPK);
+    res = await knn.predictClass(logits, TOPK);
 
 
     // das sollt ihr aendern
     result = labels[res.classIndex];
   }
+
 
   // Dispose image when done
   image.dispose();
@@ -95,7 +97,7 @@ async function infer(imageSource, label = "") {
     logits.dispose();
   }
 
-  return result;
+  return [result, Object.values(res.confidences)];
 }
 
 function getLabelsWithCount() {

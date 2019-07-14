@@ -30,7 +30,7 @@
             <v-card>
               <v-card-title primary-title><h3 class="headline ml-3">Trainierte labels:</h3></v-card-title>
               <ul class="text-xs-left">
-                <li v-for="(item, index) in sortedLabels" :key="item.label">
+                <li v-for="(item, index) in trainedLabels" :key="item.label">
                   <h3>{{ item.label }} ({{ item.count }})</h3>
                   <v-progress-linear
                     color="secondary"
@@ -82,7 +82,7 @@ export default {
     modelLoaded: false,
     train: -1,
     trainedLabels: [],
-    confidences: [],
+    confidences: [80, 40, 20, 10, 0, 80],
     videoPlaying: false,
     socket: null,
     socketConnected: false,
@@ -151,7 +151,16 @@ export default {
     handleImage: async function() {
       if (this.videoPlaying && this.modelLoaded) {
         try {
-          this.clsLabel1 = await classifier.infer(this.$refs.video_small, this.train == 1 ? this.label1 : "");
+          const rueckgabe = await classifier.infer(this.$refs.video_small, this.train == 1 ? this.label1 : "")
+          console.log(rueckgabe[1]);
+          this.clsLabel1 = rueckgabe[0];
+          var neu_mal_hundert = [];
+
+          for (var i=0;i<=rueckgabe[1].length;i++){
+            neu_mal_hundert.push(rueckgabe[1][i]*100);
+          }
+
+          this.confidences = neu_mal_hundert;
           if (this.clsLabel1) {
             this.sendToServer(this.clsLabel1);
           }
