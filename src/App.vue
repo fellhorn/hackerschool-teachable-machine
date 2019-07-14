@@ -30,21 +30,20 @@
             <v-card>
               <v-card-title primary-title><h3 class="headline ml-3">Trainierte labels:</h3></v-card-title>
               <ul class="text-xs-left">
-                <li v-for="item in sortedLabels" :key="item.label">
-                <b>{{ item.label }}</b>: {{ item.count }}
+                <li v-for="(item, index) in sortedLabels" :key="item.label">
+                  <h3>{{ item.label }} ({{ item.count }})</h3>
+                  <v-progress-linear
+                    color="secondary"
+                    height="10"
+                    v-model="confidences[index]"
+                  ></v-progress-linear>
                 </li>
               </ul>
-              <v-btn v-on:click="saveModel">Speichere model</v-btn>
-              <v-btn v-on:click="restoreModel">Lade model</v-btn>
-              <v-btn v-on:click="downloadModel">Dowload model</v-btn>
-              <v-btn v-on:click="restoreSocket">Reconnect</v-btn>
-              <br>
-              Upload model:
-              <input type="file" id="files" ref="fileUpload" name="file" />
             </v-card>
           </v-flex>
           <v-flex xs2 pa-3>
             <v-card>
+              <v-btn v-on:click="saveModel">Speichere model</v-btn>
               <v-card-title primary-title><h3 class="headline ml-3">Meine Klassifikatoren:</h3></v-card-title>
                 <div v-for="name in classifiers" v-bind:key="name">
                   {{ name }}<v-btn v-on:click="restoreModel(name)">Lade</v-btn>
@@ -83,6 +82,7 @@ export default {
     modelLoaded: false,
     train: -1,
     trainedLabels: [],
+    confidences: [],
     videoPlaying: false,
     socket: null,
     socketConnected: false,
@@ -103,7 +103,12 @@ export default {
         this.onVideoLoaded();
     })
 
-    this.classifiers = await classifier.listClassifiers();
+    try {
+      this.classifiers = await classifier.listClassifiers();
+    } catch {
+      console.debug("No saved classifiers found");
+      this.classifiers = [];
+    }
     await classifier.start();
     this.modelLoaded = true;
   },
@@ -111,9 +116,6 @@ export default {
     filterLabel: function(text) {
       return text ? text : '???';
     }
-  },
-  mounted: function() {
-    this.$refs.fileUpload.addEventListener('change', this.uploadModel, false);
   },
   computed: {
     sortedLabels: function() {
@@ -135,14 +137,16 @@ export default {
     },
     restoreSocket: function() {
       this.socket = new WebSocket(SOCKET_ADRESS);
-      this.socketConnected = true;
-      this.socket.onclose = function (error) {
-        this.socketConnected = false;
-        console.log('WebSocket Error ' + error);
-        window.setTimeout(() => {
-          this.restoreSocket();
-        }, 200);
-      };
+      this.socket.onopen = () => {
+        this.socketConnected = true;
+        this.socket.onclose = (error) => {
+          this.socketConnected = false;
+          console.log('WebSocket Error ' + error);
+          window.setTimeout(() => {
+            this.restoreSocket();
+          }, 200);
+        };
+      }
     },
     handleImage: async function() {
       if (this.videoPlaying && this.modelLoaded) {

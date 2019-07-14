@@ -72,13 +72,20 @@ async function infer(imageSource, label = "") {
 
   const numClasses = knn.getNumClasses();
   if (numClasses > 0) {
-
     // If classes have been added run predict
     logits = infer();
+    
+    
+    // TODO
+    // hier bekommt ihr ein objekt, das so ausschaut:
+    // classIndex: die index nummer des labels
+    // label: das label selbst
+    // confidences: ein array wo jede zahl die confidenc der jeweiligen klasse
+    // angibt
     const res = await knn.predictClass(logits, TOPK);
 
-    // console.log(res);
 
+    // das sollt ihr aendern
     result = labels[res.classIndex];
   }
 
